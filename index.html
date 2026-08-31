@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>読み方 — Kanji Drill by slashie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F2EEE3;
+    --paper-raised: #FBF9F3;
+    --ink: #262220;
+    --ink-soft: #59524A;
+    --muted: #9C9385;
+    --indigo: #35506B;
+    --indigo-soft: #7C93A6;
+    --seal: #A63A2E;
+    --seal-soft: #D9CBC3;
+    --rule: #D8D0C0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Zen Kaku Gothic New', system-ui, sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:48px 20px 80px;
+  }
+  .page{
+    width:100%;
+    max-width:560px;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:36px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--rule);
+  }
+  header h1{
+    font-family:'Shippori Mincho', serif;
+    font-weight:700;
+    font-size:28px;
+    margin:0;
+    letter-spacing:0.02em;
+  }
+  header .sub{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+
+  /* --- seal / score stamp --- */
+  .stamp{
+    width:56px;height:56px;
+    border-radius:50%;
+    border:2px solid var(--seal);
+    color:var(--seal);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-family:'Shippori Mincho', serif;
+    line-height:1;
+    flex-shrink:0;
+    transform:rotate(-4deg);
+  }
+  .stamp .n{font-size:18px;font-weight:700;}
+  .stamp .d{font-size:9px;margin-top:2px;letter-spacing:0.03em;}
+
+  /* --- setup panel --- */
+  .panel{
+    background:var(--paper-raised);
+    border:1px solid var(--rule);
+    padding:24px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-size:14px;
+    font-weight:500;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+  textarea{
+    width:100%;
+    min-height:160px;
+    font-family:'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size:13px;
+    line-height:1.5;
+    padding:14px;
+    border:1px solid var(--rule);
+    background:#fff;
+    color:var(--ink);
+    resize:vertical;
+  }
+  textarea:focus, input:focus, button:focus-visible{
+    outline:2px solid var(--indigo-soft);
+    outline-offset:1px;
+  }
+  .row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap;}
+  .error{
+    color:var(--seal);
+    font-size:13px;
+    margin-top:10px;
+    display:none;
+  }
+  .error.show{display:block;}
+
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  .panel-head h2{margin:0;}
+  .tabs{display:flex;border:1px solid var(--rule);}
+  .tab{
+    font-family:inherit;
+    font-size:12px;
+    font-weight:500;
+    padding:7px 14px;
+    background:transparent;
+    border:none;
+    color:var(--ink-soft);
+    cursor:pointer;
+    letter-spacing:0.02em;
+  }
+  .tab + .tab{border-left:1px solid var(--rule);}
+  .tab.active{background:var(--ink);color:var(--paper);}
+  .tab:hover:not(.active){background:var(--paper);}
+
+  .table-wrap{margin-top:2px;}
+  .edit-table{
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+    border:1px solid var(--rule);
+  }
+  .edit-table th{
+    text-align:left;
+    font-size:11px;
+    font-weight:500;
+    color:var(--muted);
+    padding:8px 10px;
+    border-bottom:1px solid var(--rule);
+    letter-spacing:0.02em;
+  }
+  .edit-table td{
+    border-bottom:1px solid var(--rule);
+    padding:0;
+  }
+  .edit-table tr:last-child td{border-bottom:none;}
+  .edit-table input[type=text]{
+    width:100%;
+    max-width:none;
+    border:none;
+    padding:9px 10px;
+    font-size:14px;
+    background:transparent;
+  }
+  .edit-table input[type=text]:focus{outline:2px solid var(--indigo-soft);outline-offset:-2px;}
+  .edit-table .del-cell{width:36px;text-align:center;}
+  .row-del-btn{
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:17px;
+    cursor:pointer;
+    padding:4px 10px;
+    line-height:1;
+  }
+  .row-del-btn:hover{color:var(--seal);}
+  .add-row-btn{
+    margin-top:10px;
+    font-size:13px;
+    padding:8px 14px;
+  }
+
+  button{
+    font-family:inherit;
+    font-size:14px;
+    font-weight:500;
+    padding:11px 20px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    transition:background 120ms ease, color 120ms ease;
+  }
+  button:hover{background:var(--indigo);border-color:var(--indigo);}
+  button.secondary{
+    background:transparent;
+    color:var(--ink-soft);
+    border-color:var(--rule);
+  }
+  button.secondary:hover{background:var(--paper);border-color:var(--ink-soft);color:var(--ink);}
+  button:disabled{opacity:0.4;cursor:default;}
+
+  .count-note{font-size:13px;color:var(--muted);}
+
+  /* --- quiz card --- */
+  .quiz{display:none;}
+  .quiz.active{display:block;}
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--rule);
+    padding:44px 32px;
+    text-align:center;
+    position:relative;
+  }
+  .direction-label{
+    font-size:12px;
+    color:var(--indigo);
+    letter-spacing:0.04em;
+  }
+  .prompt{
+    font-family:'Shippori Mincho', serif;
+    font-weight:700;
+    font-size:44px;
+    margin:22px 0 30px;
+    word-break:break-word;
+    line-height:1.3;
+  }
+  .prompt.small-mode{font-size:26px;font-family:'Zen Kaku Gothic New', sans-serif;font-weight:500;}
+
+  .answer-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+  }
+  input[type=text]{
+    font-family:inherit;
+    font-size:18px;
+    padding:12px 14px;
+    border:1px solid var(--rule);
+    background:#fff;
+    color:var(--ink);
+    width:100%;
+    max-width:280px;
+  }
+  input[type=text].correct{border-color:var(--indigo);background:#EEF2F5;}
+  input[type=text].incorrect{border-color:var(--seal);background:#F7EBE9;}
+
+  .feedback{
+    margin-top:18px;
+    min-height:44px;
+    font-size:32px;
+  }
+  .feedback .verdict{
+    font-weight:700;
+    font-size:25px;
+  }
+  .feedback .verdict.ok{color:var(--indigo);}
+  .feedback .verdict.no{color:var(--seal);}
+  .feedback .reveal{
+    margin-top:6px;
+    color:var(--ink-soft);
+  }
+  .feedback .reveal b{color:var(--ink);font-weight:700;}
+
+  .footer-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:22px;
+    gap:14px;
+  }
+  .progress{
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:0.02em;
+  }
+
+  .end-screen{display:none;text-align:center;}
+  .end-screen.active{display:block;}
+  .end-screen .big{
+    font-family:'Shippori Mincho', serif;
+    font-size:52px;
+    font-weight:700;
+    color:var(--indigo);
+    margin:10px 0 4px;
+  }
+  .end-screen p{color:var(--ink-soft);margin:0 0 26px;}
+
+  .missed-list{
+    text-align:left;
+    border-top:1px solid var(--rule);
+    margin-top:26px;
+    padding-top:18px;
+  }
+  .missed-list h3{
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink-soft);
+    margin:0 0 10px;
+  }
+  .missed-item{
+    display:flex;
+    gap:10px;
+    font-size:14px;
+    padding:6px 0;
+    border-bottom:1px solid var(--rule);
+  }
+  .missed-item:last-child{border-bottom:none;}
+  .missed-item .k{font-family:'Shippori Mincho', serif;font-weight:700;min-width:64px;}
+  .missed-item .m{color:var(--ink-soft);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <h1>読み方 by slashie</h1>
+      <div class="sub">a small drill for a dictionary you supply</div>
+    </div>
+    <div class="stamp" id="stamp">
+      <div class="n" id="stampScore">–</div>
+      <div class="d">正解</div>
+    </div>
+  </header>
+
+  <!-- SETUP -->
+  <div class="panel" id="setupPanel">
+    <div class="panel-head">
+      <h2>Dictionary — kanji / furigana / meaning</h2>
+      <div class="tabs">
+        <button class="tab active" id="tabJson" type="button">JSON</button>
+        <button class="tab" id="tabTable" type="button">Table</button>
+      </div>
+    </div>
+
+    <textarea id="dataInput" spellcheck="false"></textarea>
+
+    <div class="table-wrap" id="tableWrap" style="display:none;">
+      <table class="edit-table" id="editTable">
+        <thead>
+          <tr><th>Kanji</th><th>Furigana</th><th>Meaning</th><th></th></tr>
+        </thead>
+        <tbody id="editTableBody"></tbody>
+      </table>
+      <button class="secondary add-row-btn" id="addRowBtn" type="button">+ Add row</button>
+    </div>
+
+    <div class="error" id="jsonError">Couldn't read that JSON — check for smart quotes (“ ”) instead of straight quotes ("), and trailing commas.</div>
+    <div class="row">
+      <button id="startBtn">Start drill</button>
+      <button class="secondary" id="resetSampleBtn">Load sample</button>
+      <span class="count-note" id="countNote"></span>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="quiz" id="quiz">
+    <div class="card">
+      <div class="direction-label" id="directionLabel">KANJI → MEANING</div>
+      <div class="prompt" id="promptText">四季</div>
+      <div class="answer-row">
+        <input type="text" id="answerInput" autocomplete="off" placeholder="type your answer" />
+        <button id="checkBtn">Check</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+    <div class="footer-row">
+      <span class="progress" id="progress"></span>
+      <div>
+        <button class="secondary" id="endBtn">End drill</button>
+        <button id="nextBtn" style="display:none;">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- END -->
+  <div class="end-screen" id="endScreen">
+    <div class="direction-label">RESULT</div>
+    <div class="big" id="finalScore">0 / 0</div>
+    <p id="finalNote">drill complete</p>
+    <div class="row" style="justify-content:center;">
+      <button id="restartBtn">Drill again</button>
+      <button class="secondary" id="backToSetupBtn">Change dictionary</button>
+    </div>
+    <div class="missed-list" id="missedList" style="display:none;">
+      <h3>Missed this round</h3>
+      <div id="missedItems"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  const SAMPLE = [
+    {
+        "kanji": "四季",
+        "furigana": "しき",
+        "meaning": "four seasons"
+    },
+    {
+        "kanji": "季節",
+        "furigana": "きせつ",
+        "meaning": "season"
+    },
+    {
+        "kanji": "節分",
+        "furigana": "せつぶん",
+        "meaning": "start of spring / bean-throwing festival"
+    },
+    {
+        "kanji": "春",
+        "furigana": "はる",
+        "meaning": "spring"
+    },
+    {
+        "kanji": "夏",
+        "furigana": "なつ",
+        "meaning": "summer"
+    },
+    {
+        "kanji": "秋",
+        "furigana": "あき",
+        "meaning": "autumn / fall"
+    },
+    {
+        "kanji": "冬",
+        "furigana": "ふゆ",
+        "meaning": "winter"
+    },
+    {
+        "kanji": "青春",
+        "furigana": "せいしゅん",
+        "meaning": "youth"
+    },
+    {
+        "kanji": "夏休み",
+        "furigana": "なつやすみ",
+        "meaning": "summer holidays"
+    },
+    {
+        "kanji": "夏まつり",
+        "furigana": "なつまつり",
+        "meaning": "summer festival"
+    },
+    {
+        "kanji": "夏服",
+        "furigana": "なつふく",
+        "meaning": "summer clothes"
+    },
+    {
+        "kanji": "秋田県",
+        "furigana": "あきたけん",
+        "meaning": "akita prefecture"
+    },
+    {
+        "kanji": "秋分の日",
+        "furigana": "しゅうぶんのひ",
+        "meaning": "autumn equinox day"
+    },
+    {
+        "kanji": "冬休み",
+        "furigana": "ふゆやすみ",
+        "meaning": "winter holidays"
+    },
+    {
+        "kanji": "春夏秋冬",
+        "furigana": "しゅんかしゅうと",
+        "meaning": "spring, summer, autumn, winter"
+    },
+    {
+        "kanji": "暑い",
+        "furigana": "あつい",
+        "meaning": "hot"
+    },
+    {
+        "kanji": "残暑",
+        "furigana": "ざんちょ",
+        "meaning": "late-summer heat"
+    },
+    {
+        "kanji": "寒い",
+        "furigana": "さむい",
+        "meaning": "cold"
+    },
+    {
+        "kanji": "寒波",
+        "furigana": "かんぱ",
+        "meaning": "cold wave"
+    },
+    {
+        "kanji": "暖かい",
+        "furigana": "あたたかい",
+        "meaning": "warm"
+    },
+    {
+        "kanji": "暖冬",
+        "furigana": "だんとう",
+        "meaning": "warm winter"
+    },
+    {
+        "kanji": "暖房",
+        "furigana": "だんぼう",
+        "meaning": "heating"
+    },
+    {
+        "kanji": "温暖化",
+        "furigana": "おんだんか",
+        "meaning": "warming"
+    },
+    {
+        "kanji": "涼しい",
+        "furigana": "すずしい",
+        "meaning": "cool"
+    },
+    {
+        "kanji": "涼風",
+        "furigana": "りょうふう",
+        "meaning": "cool breeze"
+    }
+  ];
+
+  const dataInput   = document.getElementById('dataInput');
+  const jsonError   = document.getElementById('jsonError');
+  const setupPanel  = document.getElementById('setupPanel');
+  const startBtn    = document.getElementById('startBtn');
+  const resetSampleBtn = document.getElementById('resetSampleBtn');
+  const countNote   = document.getElementById('countNote');
+
+  const tabJson     = document.getElementById('tabJson');
+  const tabTable    = document.getElementById('tabTable');
+  const tableWrap   = document.getElementById('tableWrap');
+  const editTableBody = document.getElementById('editTableBody');
+  const addRowBtn   = document.getElementById('addRowBtn');
+  let inputMode = 'json'; // 'json' | 'table'
+
+  const quiz          = document.getElementById('quiz');
+  const directionLabel= document.getElementById('directionLabel');
+  const promptText    = document.getElementById('promptText');
+  const answerInput   = document.getElementById('answerInput');
+  const checkBtn      = document.getElementById('checkBtn');
+  const feedback      = document.getElementById('feedback');
+  const progress      = document.getElementById('progress');
+  const nextBtn       = document.getElementById('nextBtn');
+  const endBtn        = document.getElementById('endBtn');
+
+  const endScreen   = document.getElementById('endScreen');
+  const finalScore  = document.getElementById('finalScore');
+  const finalNote   = document.getElementById('finalNote');
+  const restartBtn  = document.getElementById('restartBtn');
+  const backToSetupBtn = document.getElementById('backToSetupBtn');
+  const missedList  = document.getElementById('missedList');
+  const missedItems = document.getElementById('missedItems');
+
+  const stampScore = document.getElementById('stampScore');
+
+  dataInput.value = JSON.stringify(SAMPLE, null, 2);
+  updateCountNote();
+
+  let deck = [];
+  let order = [];
+  let pos = 0;
+  let score = 0;
+  let answered = false;
+  let missed = [];
+  let currentQ = null;
+
+  // ---------- setup ----------
+
+  dataInput.addEventListener('input', () => {
+    jsonError.classList.remove('show');
+    updateCountNote();
+  });
+
+  resetSampleBtn.addEventListener('click', () => {
+    dataInput.value = JSON.stringify(SAMPLE, null, 2);
+    jsonError.classList.remove('show');
+    if (inputMode === 'table'){
+      buildTableFromArray(SAMPLE);
+    }
+    updateCountNote();
+  });
+
+  function updateCountNote(){
+    const arr = inputMode === 'table' ? readArrayFromTable() : readArrayFromJsonTextOrNull();
+    if (arr && Array.isArray(arr)){
+      countNote.textContent = arr.length + (arr.length === 1 ? ' entry' : ' entries');
+    } else {
+      countNote.textContent = '';
+    }
+  }
+
+  // ---------- table editor ----------
+
+  function escapeAttr(s){
+    return (s == null ? '' : String(s))
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;');
+  }
+
+  function addTableRow(kanji, furigana, meaning, focusFirst){
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><input type="text" class="cell-kanji" value="' + escapeAttr(kanji) + '" placeholder="漢字"></td>' +
+      '<td><input type="text" class="cell-furigana" value="' + escapeAttr(furigana) + '" placeholder="ふりがな"></td>' +
+      '<td><input type="text" class="cell-meaning" value="' + escapeAttr(meaning) + '" placeholder="meaning"></td>' +
+      '<td class="del-cell"><button type="button" class="row-del-btn" title="Remove row">×</button></td>';
+    tr.querySelector('.row-del-btn').addEventListener('click', () => {
+      tr.remove();
+      if (!editTableBody.children.length) addTableRow('', '', '');
+      updateCountNote();
+    });
+    tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateCountNote));
+    editTableBody.appendChild(tr);
+    if (focusFirst){
+      const first = tr.querySelector('input');
+      if (first) first.focus();
+    }
+  }
+
+  function buildTableFromArray(arr){
+    editTableBody.innerHTML = '';
+    arr.forEach(e => addTableRow((e && e.kanji) || '', (e && e.furigana) || '', (e && e.meaning) || ''));
+    if (!arr.length) addTableRow('', '', '');
+  }
+
+  function readArrayFromTable(){
+    return Array.from(editTableBody.querySelectorAll('tr')).map(tr => ({
+      kanji: tr.querySelector('.cell-kanji').value.trim(),
+      furigana: tr.querySelector('.cell-furigana').value.trim(),
+      meaning: tr.querySelector('.cell-meaning').value.trim()
+    })).filter(e => e.kanji || e.furigana || e.meaning);
+  }
+
+  function readArrayFromJsonTextOrNull(){
+    try{
+      const parsed = JSON.parse(dataInput.value);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch(e){
+      return null;
+    }
+  }
+
+  addRowBtn.addEventListener('click', () => addTableRow('', '', '', true));
+
+  tabJson.addEventListener('click', () => switchInputMode('json'));
+  tabTable.addEventListener('click', () => switchInputMode('table'));
+
+  function switchInputMode(target){
+    if (target === inputMode) return;
+    jsonError.classList.remove('show');
+
+    if (target === 'table'){
+      const arr = readArrayFromJsonTextOrNull();
+      buildTableFromArray(arr || readArrayFromTable());
+      dataInput.style.display = 'none';
+      tableWrap.style.display = '';
+    } else {
+      dataInput.value = JSON.stringify(readArrayFromTable(), null, 2);
+      tableWrap.style.display = 'none';
+      dataInput.style.display = '';
+    }
+
+    inputMode = target;
+    tabJson.classList.toggle('active', inputMode === 'json');
+    tabTable.classList.toggle('active', inputMode === 'table');
+    updateCountNote();
+  }
+
+  startBtn.addEventListener('click', () => {
+    let cleaned;
+
+    if (inputMode === 'table'){
+      cleaned = readArrayFromTable();
+    } else {
+      let parsed;
+      try{
+        parsed = JSON.parse(dataInput.value);
+      } catch(e){
+        jsonError.textContent = 'Couldn\'t read that JSON — check for smart quotes (\u201c \u201d) instead of straight quotes ("), and trailing commas.';
+        jsonError.classList.add('show');
+        return;
+      }
+      if (!Array.isArray(parsed)){
+        jsonError.textContent = 'That parsed fine, but it needs to be an array of {kanji, furigana, meaning} objects.';
+        jsonError.classList.add('show');
+        return;
+      }
+      cleaned = parsed.filter(e => e && (e.kanji || e.furigana || e.meaning));
+    }
+
+    if (cleaned.length < 2){
+      jsonError.textContent = 'Add at least 2 entries so there is something to quiz.';
+      jsonError.classList.add('show');
+      return;
+    }
+    jsonError.classList.remove('show');
+    deck = cleaned;
+    beginRound();
+  });
+
+  // ---------- round control ----------
+
+  function beginRound(){
+    order = shuffle(deck.map((_, i) => i));
+    pos = 0;
+    score = 0;
+    missed = [];
+    setupPanel.style.display = 'none';
+    endScreen.classList.remove('active');
+    quiz.classList.add('active');
+    updateStamp();
+    nextQuestion();
+  }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // direction definitions: from field -> to field, with a human label
+  const DIRECTIONS = [
+    { from: 'kanji',    to: 'meaning',  label: 'KANJI → MEANING',   fromClass: '' },
+    { from: 'meaning',  to: 'kanji',    label: 'MEANING → KANJI',   fromClass: 'small-mode' },
+    { from: 'kanji',    to: 'furigana', label: 'KANJI → READING',   fromClass: '' },
+    { from: 'furigana', to: 'kanji',    label: 'READING → KANJI',   fromClass: '' },
+    { from: 'furigana', to: 'meaning',  label: 'READING → MEANING', fromClass: '' },
+    { from: 'meaning',  to: 'furigana', label: 'MEANING → READING', fromClass: 'small-mode' }
+  ];
+
+  function availableDirections(entry){
+    // only offer a direction if both fields actually have content
+    return DIRECTIONS.filter(d => (entry[d.from] || '').trim() && (entry[d.to] || '').trim());
+  }
+
+  function nextQuestion(){
+    if (pos >= order.length){
+      finishRound();
+      return;
+    }
+    const entry = deck[order[pos]];
+    const dirs = availableDirections(entry);
+    const dir = dirs.length ? dirs[Math.floor(Math.random() * dirs.length)] : DIRECTIONS[0];
+
+    currentQ = { entry, dir };
+    answered = false;
+
+    directionLabel.textContent = dir.label;
+    promptText.textContent = entry[dir.from];
+    promptText.className = 'prompt ' + dir.fromClass;
+
+    answerInput.value = '';
+    answerInput.classList.remove('correct', 'incorrect');
+    answerInput.disabled = false;
+    feedback.innerHTML = '';
+    checkBtn.style.display = '';
+    nextBtn.style.display = 'none';
+    progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
+
+    answerInput.focus();
+  }
+
+  function finishRound(){
+    quiz.classList.remove('active');
+    endScreen.classList.add('active');
+    finalScore.textContent = score + ' / ' + order.length;
+    const pct = Math.round((score / order.length) * 100);
+    finalNote.textContent = pct === 100 ? 'clean sweep' : pct >= 70 ? 'solid round' : 'worth another pass';
+
+    if (missed.length){
+      missedList.style.display = 'block';
+      missedItems.innerHTML = '';
+      missed.forEach(m => {
+        const row = document.createElement('div');
+        row.className = 'missed-item';
+        row.innerHTML = '<span class="k">' + escapeHtml(m.kanji) + '</span>' +
+                         '<span class="m">' + escapeHtml(m.furigana) + ' — ' + escapeHtml(m.meaning) + '</span>';
+        missedItems.appendChild(row);
+      });
+    } else {
+      missedList.style.display = 'none';
+    }
+  }
+
+  // ---------- answer checking ----------
+
+  function normalize(s){
+    return (s || '').toString().trim().toLowerCase();
+  }
+
+  // splits on common separators used to list alternate acceptable answers
+  function alternatives(s){
+    return (s || '').toString().split(/[\/,;]| or /i).map(x => normalize(x)).filter(Boolean);
+  }
+
+  function isCorrect(dir, entry, userAnswer){
+    const correctRaw = entry[dir.to];
+    const user = normalize(userAnswer);
+    if (!user) return false;
+
+    if (dir.to === 'meaning'){
+      const accepted = alternatives(correctRaw);
+      return accepted.some(a => a === user || a.includes(user) || user.includes(a));
+    }
+    // kanji / furigana: allow multiple accepted forms separated by / , but otherwise exact
+    const accepted = alternatives(correctRaw);
+    return accepted.includes(user);
+  }
+
+  function submitAnswer(){
+    if (answered) return;
+    answered = true;
+    const { entry, dir } = currentQ;
+    const userAnswer = answerInput.value;
+    const correct = isCorrect(dir, entry, userAnswer);
+
+    if (correct){
+      score++;
+      answerInput.classList.add('correct');
+      feedback.innerHTML = '<div class="verdict ok">合っています — correct</div>';
+    } else {
+      answerInput.classList.add('incorrect');
+      missed.push(entry);
+      feedback.innerHTML =
+        '<div class="verdict no">not quite</div>' +
+        '<div class="reveal">' + labelFor(dir.to) + ': <b>' + escapeHtml(entry[dir.to]) + '</b></div>';
+    }
+
+    answerInput.disabled = true;
+    checkBtn.style.display = 'none';
+    nextBtn.style.display = '';
+    nextBtn.focus();
+    progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
+    updateStamp();
+  }
+
+  function labelFor(field){
+    if (field === 'kanji') return 'kanji';
+    if (field === 'furigana') return 'reading';
+    return 'meaning';
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function updateStamp(){
+    const total = pos + (answered ? 1 : 0);
+    stampScore.textContent = total > 0 ? score + '/' + total : '–';
+  }
+
+  checkBtn.addEventListener('click', submitAnswer);
+  answerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      if (!answered){
+        submitAnswer();
+      } else {
+        goNext();
+      }
+    }
+  });
+  nextBtn.addEventListener('click', goNext);
+
+  function goNext(){
+    pos++;
+    nextQuestion();
+  }
+
+  endBtn.addEventListener('click', () => {
+    finishRound();
+  });
+
+  restartBtn.addEventListener('click', beginRound);
+
+  backToSetupBtn.addEventListener('click', () => {
+    endScreen.classList.remove('active');
+    setupPanel.style.display = '';
+    stampScore.textContent = '–';
+    updateCountNote();
+  });
+
+})();
+</script>
+</body>
+</html>
