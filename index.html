@@ -443,6 +443,12 @@
 
   <!-- SETUP -->
   <div class="panel" id="setupPanel">
+    <div class="error" id="jsonError">Couldn't read that JSON — check for smart quotes (“ ”) instead of straight quotes ("), and trailing commas.</div>
+    <div class="row">
+      <button id="startBtn">Start drill</button>
+      <span class="count-note" id="countNote"></span>
+    </div>
+    <hr>
     <div class="panel-head">
       <h2>Dictionary — kanji / furigana / meaning</h2>
       <div class="tabs">
@@ -474,13 +480,6 @@
         <tbody id="editTableBody"></tbody>
       </table>
       <button class="secondary add-row-btn" id="addRowBtn" type="button">+ Add row</button>
-    </div>
-
-    <div class="error" id="jsonError">Couldn't read that JSON — check for smart quotes (“ ”) instead of straight quotes ("), and trailing commas.</div>
-    <div class="row">
-      <button id="startBtn">Start drill</button>
-      <button class="secondary" id="resetSampleBtn">Load sample</button>
-      <span class="count-note" id="countNote"></span>
     </div>
   </div>
 
@@ -673,7 +672,6 @@
   const jsonError   = document.getElementById('jsonError');
   const setupPanel  = document.getElementById('setupPanel');
   const startBtn    = document.getElementById('startBtn');
-  const resetSampleBtn = document.getElementById('resetSampleBtn');
   const countNote   = document.getElementById('countNote');
 
   const tabUpload   = document.getElementById('tabUpload');
@@ -741,15 +739,6 @@
     updateCountNote();
   });
 
-  resetSampleBtn.addEventListener('click', () => {
-    dataInput.value = JSON.stringify(SAMPLE, null, 2);
-    jsonError.classList.remove('show');
-    resetUploadStatus();
-    if (inputMode === 'table'){
-      buildTableFromArray(SAMPLE);
-    }
-    updateCountNote();
-  });
 
   function updateCountNote(){
     const arr = inputMode === 'table' ? readArrayFromTable() : readArrayFromJsonTextOrNull();
