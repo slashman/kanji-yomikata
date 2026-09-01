@@ -302,6 +302,62 @@
   input[type=text].correct{border-color:var(--indigo);background:#EEF2F5;}
   input[type=text].incorrect{border-color:var(--seal);background:#F7EBE9;}
 
+  .draw-area{display:flex;flex-direction:column;align-items:center;}
+  .draw-hint{
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:12px;
+  }
+  #drawCanvas{
+    width:260px;
+    height:260px;
+    background:#fff repeating-linear-gradient(
+        to right, transparent 0 129px, var(--rule) 129px 131px, transparent 131px 260px
+      ),
+      repeating-linear-gradient(
+        to bottom, transparent 0 129px, var(--rule) 129px 131px, transparent 131px 260px
+      );
+    border:1px solid var(--ink);
+    touch-action:none;
+    cursor:crosshair;
+  }
+  .draw-controls{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-top:14px;
+  }
+  .self-grade{
+    margin-top:18px;
+    text-align:center;
+  }
+  .self-grade-answer{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+  }
+  .self-grade-kanji{
+    font-family:'Shippori Mincho', serif;
+    font-weight:700;
+    font-size:34px;
+    color:var(--ink);
+    margin-left:4px;
+  }
+  .self-grade-buttons{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+  }
+  .grade-btn{
+    font-size:13px;
+    padding:10px 16px;
+  }
+  .grade-btn.grade-yes{border-color:var(--indigo);background:var(--indigo);}
+  .grade-btn.grade-yes:hover{background:#2b4258;}
+  .grade-btn.grade-no{border-color:var(--seal);background:var(--seal);}
+  .grade-btn.grade-no:hover{background:#8c3126;}
+  .grade-btn:disabled{opacity:0.35;}
+
   .feedback{
     margin-top:18px;
     min-height:44px;
@@ -433,10 +489,27 @@
     <div class="card">
       <div class="direction-label" id="directionLabel">KANJI → MEANING</div>
       <div class="prompt" id="promptText">四季</div>
-      <div class="answer-row">
+      <div class="answer-row" id="answerRow">
         <input type="text" id="answerInput" autocomplete="off" placeholder="type your answer" />
         <button id="checkBtn">Check</button>
       </div>
+
+      <div class="draw-area" id="drawArea" style="display:none;">
+        <div class="draw-hint">draw the kanji, then reveal the answer and grade yourself</div>
+        <canvas id="drawCanvas" width="260" height="260"></canvas>
+        <div class="draw-controls" id="drawControls">
+          <button class="secondary" id="clearDrawBtn" type="button">Clear</button>
+          <button id="submitDrawBtn" type="button">Reveal answer</button>
+        </div>
+        <div class="self-grade" id="selfGrade" style="display:none;">
+          <div class="self-grade-answer">correct kanji — <span id="selfGradeAnswer" class="self-grade-kanji"></span></div>
+          <div class="self-grade-buttons">
+            <button class="grade-btn grade-yes" id="gradeYesBtn" type="button">✓ I got it right</button>
+            <button class="grade-btn grade-no" id="gradeNoBtn" type="button">✗ I got it wrong</button>
+          </div>
+        </div>
+      </div>
+
       <div class="feedback" id="feedback"></div>
     </div>
     <div class="footer-row">
@@ -620,12 +693,24 @@
   const quiz          = document.getElementById('quiz');
   const directionLabel= document.getElementById('directionLabel');
   const promptText    = document.getElementById('promptText');
+  const answerRow      = document.getElementById('answerRow');
   const answerInput   = document.getElementById('answerInput');
   const checkBtn      = document.getElementById('checkBtn');
   const feedback      = document.getElementById('feedback');
   const progress      = document.getElementById('progress');
   const nextBtn       = document.getElementById('nextBtn');
   const endBtn        = document.getElementById('endBtn');
+
+  const drawArea       = document.getElementById('drawArea');
+  const drawCanvas     = document.getElementById('drawCanvas');
+  const drawCtx        = drawCanvas.getContext('2d');
+  const drawControls   = document.getElementById('drawControls');
+  const clearDrawBtn   = document.getElementById('clearDrawBtn');
+  const submitDrawBtn  = document.getElementById('submitDrawBtn');
+  const selfGrade      = document.getElementById('selfGrade');
+  const selfGradeAnswer= document.getElementById('selfGradeAnswer');
+  const gradeYesBtn    = document.getElementById('gradeYesBtn');
+  const gradeNoBtn     = document.getElementById('gradeNoBtn');
 
   const endScreen   = document.getElementById('endScreen');
   const finalScore  = document.getElementById('finalScore');
@@ -658,6 +743,7 @@
   resetSampleBtn.addEventListener('click', () => {
     dataInput.value = JSON.stringify(SAMPLE, null, 2);
     jsonError.classList.remove('show');
+    resetUploadStatus();
     if (inputMode === 'table'){
       buildTableFromArray(SAMPLE);
     }
@@ -912,15 +998,29 @@
     promptText.textContent = entry[dir.from];
     promptText.className = 'prompt ' + dir.fromClass;
 
-    answerInput.value = '';
-    answerInput.classList.remove('correct', 'incorrect');
-    answerInput.disabled = false;
     feedback.innerHTML = '';
-    checkBtn.style.display = '';
     nextBtn.style.display = 'none';
     progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
 
+    const drawMode = dir.to === 'kanji';
+
+    if (drawMode){
+      answerRow.style.display = 'none';
+      drawArea.style.display = 'flex';
+      resetCanvas();
+      drawControls.style.display = '';
+      selfGrade.style.display = 'none';
+      gradeYesBtn.disabled = false;
+      gradeNoBtn.disabled = false;
+    } else {
+      drawArea.style.display = 'none';
+      answerRow.style.display = 'flex';
+      answerInput.value = '';
+      answerInput.classList.remove('correct', 'incorrect');
+      answerInput.disabled = false;
+      checkBtn.style.display = '';
     answerInput.focus();
+    }
   }
 
   function finishRound(){
@@ -1012,6 +1112,91 @@
   function updateStamp(){
     const total = pos + (answered ? 1 : 0);
     stampScore.textContent = total > 0 ? score + '/' + total : '–';
+  }
+
+  // ---------- drawing pad (self-graded kanji recall) ----------
+
+  let drawing = false;
+
+  function resetCanvas(){
+    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    drawCtx.fillStyle = '#fff';
+    drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+  }
+
+  function canvasPos(e){
+    const rect = drawCanvas.getBoundingClientRect();
+    const scaleX = drawCanvas.width / rect.width;
+    const scaleY = drawCanvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function startDraw(e){
+    if (answered) return;
+    drawing = true;
+    drawCanvas.setPointerCapture(e.pointerId);
+    const p = canvasPos(e);
+    drawCtx.beginPath();
+    drawCtx.moveTo(p.x, p.y);
+    drawCtx.strokeStyle = '#262220';
+    drawCtx.lineWidth = 7;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+  }
+
+  function moveDraw(e){
+    if (!drawing) return;
+    e.preventDefault();
+    const p = canvasPos(e);
+    drawCtx.lineTo(p.x, p.y);
+    drawCtx.stroke();
+  }
+
+  function endDraw(){
+    drawing = false;
+  }
+
+  drawCanvas.addEventListener('pointerdown', startDraw);
+  drawCanvas.addEventListener('pointermove', moveDraw);
+  drawCanvas.addEventListener('pointerup', endDraw);
+  drawCanvas.addEventListener('pointercancel', endDraw);
+  drawCanvas.addEventListener('pointerleave', endDraw);
+
+  clearDrawBtn.addEventListener('click', resetCanvas);
+
+  submitDrawBtn.addEventListener('click', () => {
+    if (answered) return;
+    const { entry } = currentQ;
+    selfGradeAnswer.textContent = entry.kanji;
+    selfGrade.style.display = 'block';
+    drawControls.style.display = 'none';
+  });
+
+  gradeYesBtn.addEventListener('click', () => finalizeDraw(true));
+  gradeNoBtn.addEventListener('click', () => finalizeDraw(false));
+
+  function finalizeDraw(correct){
+    if (answered) return;
+    answered = true;
+    const { entry } = currentQ;
+
+    if (correct){
+      score++;
+      feedback.innerHTML = '<div class="verdict ok">marked correct</div>';
+    } else {
+      missed.push(entry);
+      feedback.innerHTML = '<div class="verdict no">marked incorrect</div>';
+    }
+
+    gradeYesBtn.disabled = true;
+    gradeNoBtn.disabled = true;
+    nextBtn.style.display = '';
+    nextBtn.focus();
+    progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
+    updateStamp();
   }
 
   checkBtn.addEventListener('click', submitAnswer);
