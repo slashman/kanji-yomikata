@@ -181,6 +181,61 @@
     padding:8px 14px;
   }
 
+  .upload-wrap{margin-top:2px;}
+  .dropzone{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    border:1.5px dashed var(--rule);
+    background:#fff;
+    padding:38px 20px;
+    cursor:pointer;
+    text-align:center;
+    transition:border-color 120ms ease, background 120ms ease;
+  }
+  .dropzone:hover, .dropzone.drag-over{
+    border-color:var(--indigo);
+    background:#F5F7F8;
+  }
+  .dropzone:focus-visible{
+    outline:2px solid var(--indigo-soft);
+    outline-offset:2px;
+  }
+  .dropzone-icon{
+    font-size:22px;
+    color:var(--indigo);
+    line-height:1;
+  }
+  .dropzone-text{
+    font-size:14px;
+    color:var(--ink-soft);
+  }
+  .dropzone-text strong{color:var(--ink);font-weight:500;}
+  .upload-status{
+    margin-top:12px;
+    font-size:13px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .upload-status .clear-file-btn{
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:12px;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:0;
+    display:none;
+    flex-shrink:0;
+  }
+  .upload-status.has-file{color:var(--ink-soft);}
+  .upload-status.has-file .clear-file-btn{display:inline;}
+
   button{
     font-family:inherit;
     font-size:14px;
@@ -335,12 +390,25 @@
     <div class="panel-head">
       <h2>Dictionary — kanji / furigana / meaning</h2>
       <div class="tabs">
-        <button class="tab active" id="tabJson" type="button">JSON</button>
-        <button class="tab" id="tabTable" type="button">Table</button>
+        <button class="tab active" id="tabTable" type="button">Table</button>
+        <button class="tab" id="tabUpload" type="button">Upload</button>
+        <button class="tab" id="tabJson" type="button">JSON</button>
       </div>
     </div>
 
-    <textarea id="dataInput" spellcheck="false"></textarea>
+    <div class="upload-wrap" id="uploadWrap">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a JSON dictionary file">
+        <div class="dropzone-icon">⇪</div>
+        <div class="dropzone-text"><strong>Click to choose a file</strong> or drag a .json file here</div>
+      </div>
+      <input type="file" id="fileInput" accept=".json,application/json" style="display:none;">
+      <div class="upload-status" id="uploadStatus">
+        <span id="uploadStatusText">No file loaded — using the sample dictionary below.</span>
+        <button type="button" class="clear-file-btn" id="clearFileBtn">clear</button>
+      </div>
+    </div>
+
+    <textarea id="dataInput" spellcheck="false" style="display:none;"></textarea>
 
     <div class="table-wrap" id="tableWrap" style="display:none;">
       <table class="edit-table" id="editTable">
@@ -535,12 +603,19 @@
   const resetSampleBtn = document.getElementById('resetSampleBtn');
   const countNote   = document.getElementById('countNote');
 
+  const tabUpload   = document.getElementById('tabUpload');
   const tabJson     = document.getElementById('tabJson');
   const tabTable    = document.getElementById('tabTable');
+  const uploadWrap  = document.getElementById('uploadWrap');
   const tableWrap   = document.getElementById('tableWrap');
+  const dropzone    = document.getElementById('dropzone');
+  const fileInput   = document.getElementById('fileInput');
+  const uploadStatus     = document.getElementById('uploadStatus');
+  const uploadStatusText = document.getElementById('uploadStatusText');
+  const clearFileBtn     = document.getElementById('clearFileBtn');
   const editTableBody = document.getElementById('editTableBody');
   const addRowBtn   = document.getElementById('addRowBtn');
-  let inputMode = 'json'; // 'json' | 'table'
+  let inputMode = 'table'; // 'upload' | 'json' | 'table'
 
   const quiz          = document.getElementById('quiz');
   const directionLabel= document.getElementById('directionLabel');
@@ -652,6 +727,11 @@
 
   addRowBtn.addEventListener('click', () => addTableRow('', '', '', true));
 
+  // ---------- mode / tab switching ----------
+
+  const MODE_VIEWS = { upload: uploadWrap, json: dataInput, table: tableWrap };
+
+  tabUpload.addEventListener('click', () => switchInputMode('upload'));
   tabJson.addEventListener('click', () => switchInputMode('json'));
   tabTable.addEventListener('click', () => switchInputMode('table'));
 
@@ -659,23 +739,93 @@
     if (target === inputMode) return;
     jsonError.classList.remove('show');
 
+    // leaving the table: fold its rows back into the JSON text (the shared source of truth)
+    if (inputMode === 'table'){
+      dataInput.value = JSON.stringify(readArrayFromTable(), null, 2);
+    }
+    // entering the table: build it from whatever JSON text currently holds
     if (target === 'table'){
       const arr = readArrayFromJsonTextOrNull();
       buildTableFromArray(arr || readArrayFromTable());
-      dataInput.style.display = 'none';
-      tableWrap.style.display = '';
-    } else {
-      dataInput.value = JSON.stringify(readArrayFromTable(), null, 2);
-      tableWrap.style.display = 'none';
-      dataInput.style.display = '';
     }
 
+    Object.keys(MODE_VIEWS).forEach(k => {
+      MODE_VIEWS[k].style.display = (k === target) ? '' : 'none';
+    });
+
     inputMode = target;
+    tabUpload.classList.toggle('active', inputMode === 'upload');
     tabJson.classList.toggle('active', inputMode === 'json');
     tabTable.classList.toggle('active', inputMode === 'table');
     updateCountNote();
   }
 
+  // ---------- file upload ----------
+
+  function resetUploadStatus(){
+    uploadStatusText.textContent = 'No file loaded — using the sample dictionary below.';
+    uploadStatus.classList.remove('has-file');
+    fileInput.value = '';
+  }
+
+  function handleFile(file){
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try{
+        parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed)) throw new Error('not an array');
+      } catch(e){
+        jsonError.textContent = 'Couldn\'t read "' + file.name + '" — make sure it\'s a JSON array of {kanji, furigana, meaning} objects.';
+        jsonError.classList.add('show');
+        return;
+      }
+      jsonError.classList.remove('show');
+      dataInput.value = JSON.stringify(parsed, null, 2);
+      uploadStatusText.textContent = file.name + ' — ' + parsed.length + (parsed.length === 1 ? ' entry' : ' entries');
+      uploadStatus.classList.add('has-file');
+      if (inputMode === 'table') buildTableFromArray(parsed);
+      updateCountNote();
+    };
+    reader.onerror = () => {
+      jsonError.textContent = 'Couldn\'t read that file.';
+      jsonError.classList.add('show');
+    };
+    reader.readAsText(file);
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(evt => {
+    dropzone.addEventListener(evt, () => dropzone.classList.remove('drag-over'));
+  });
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  clearFileBtn.addEventListener('click', () => {
+    dataInput.value = JSON.stringify(SAMPLE, null, 2);
+    resetUploadStatus();
+    if (inputMode === 'table') buildTableFromArray(SAMPLE);
+    updateCountNote();
+  });
   startBtn.addEventListener('click', () => {
     let cleaned;
 
