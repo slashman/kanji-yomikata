@@ -452,7 +452,7 @@
       </div>
     </div>
 
-    <div class="upload-wrap" id="uploadWrap">
+    <div class="upload-wrap" id="uploadWrap" style="display:none;">
       <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a JSON dictionary file">
         <div class="dropzone-icon">⇪</div>
         <div class="dropzone-text"><strong>Click to choose a file</strong> or drag a .json file here</div>
@@ -466,7 +466,7 @@
 
     <textarea id="dataInput" spellcheck="false" style="display:none;"></textarea>
 
-    <div class="table-wrap" id="tableWrap" style="display:none;">
+    <div class="table-wrap" id="tableWrap">
       <table class="edit-table" id="editTable">
         <thead>
           <tr><th>Kanji</th><th>Furigana</th><th>Meaning</th><th></th></tr>
@@ -723,6 +723,7 @@
   const stampScore = document.getElementById('stampScore');
 
   dataInput.value = JSON.stringify(SAMPLE, null, 2);
+  buildTableFromArray(SAMPLE);
   updateCountNote();
 
   let deck = [];
