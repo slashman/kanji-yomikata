@@ -288,6 +288,59 @@
     display:flex;
     gap:10px;
     justify-content:center;
+    flex-wrap:wrap;
+  }
+
+  .select-controls{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    margin-top:4px;
+  }
+
+  .choice-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    width:100%;
+    max-width:380px;
+  }
+
+  .choice-btn{
+    min-height:52px;
+    padding:10px 14px;
+    background:#fff;
+    color:var(--ink);
+    border-color:var(--rule);
+    font-size:16px;
+  }
+
+  .choice-btn:hover{
+    background:var(--paper);
+    border-color:var(--indigo-soft);
+  }
+
+  .choice-btn.correct{
+    background:#EEF2F5;
+    border-color:var(--indigo);
+    color:var(--indigo);
+  }
+
+  .choice-btn.incorrect{
+    background:#F7EBE9;
+    border-color:var(--seal);
+    color:var(--seal);
+  }
+
+  .choice-btn:disabled{
+    opacity:1;
+    cursor:default;
+  }
+
+  .switch-answer-btn{
+    font-size:12px;
+    padding:7px 12px;
   }
   input[type=text]{
     font-family:inherit;
@@ -491,6 +544,13 @@
       <div class="answer-row" id="answerRow">
         <input type="text" id="answerInput" autocomplete="off" placeholder="type your answer" />
         <button id="checkBtn">Check</button>
+        <button class="secondary" id="selectBtn" type="button">Select</button>
+      </div>
+
+      <div class="select-controls" id="selectControls" style="display:none;">
+        <div class="choice-grid" id="choiceGrid"></div>
+        <button class="secondary switch-answer-btn" id="switchAnswerBtn" type="button">← Type answer</button>
+      </div>
       </div>
 
       <div class="draw-area" id="drawArea" style="display:none;">
@@ -499,6 +559,7 @@
         <div class="draw-controls" id="drawControls">
           <button class="secondary" id="clearDrawBtn" type="button">Clear</button>
           <button id="submitDrawBtn" type="button">Reveal answer</button>
+          <button class="secondary" id="drawSelectBtn" type="button">Select</button>
         </div>
         <div class="self-grade" id="selfGrade" style="display:none;">
           <div class="self-grade-answer">correct kanji — <span id="selfGradeAnswer" class="self-grade-kanji"></span></div>
@@ -694,6 +755,11 @@
   const answerRow      = document.getElementById('answerRow');
   const answerInput   = document.getElementById('answerInput');
   const checkBtn      = document.getElementById('checkBtn');
+  const selectBtn     = document.getElementById('selectBtn');
+  const selectControls= document.getElementById('selectControls');
+  const choiceGrid    = document.getElementById('choiceGrid');
+  const switchAnswerBtn = document.getElementById('switchAnswerBtn');
+  const drawSelectBtn  = document.getElementById('drawSelectBtn');
   const feedback      = document.getElementById('feedback');
   const progress      = document.getElementById('progress');
   const nextBtn       = document.getElementById('nextBtn');
@@ -972,6 +1038,100 @@
     return DIRECTIONS.filter(d => (entry[d.from] || '').trim() && (entry[d.to] || '').trim());
   }
 
+  function buildChoices(dir, entry){
+    const correct = entry[dir.to];
+    const candidates = [];
+
+    deck.forEach(other => {
+      if (other === entry) return;
+      const value = (other && other[dir.to] || '').toString().trim();
+      if (value && !candidates.includes(value) && value !== correct) {
+        candidates.push(value);
+      }
+    });
+
+    // Prefer four distinct choices. If the dictionary has fewer than four
+    // alternatives, show all available choices rather than duplicating answers.
+    const distractors = shuffle(candidates).slice(0, 3);
+    return shuffle([correct, ...distractors]);
+  }
+
+  function showSelectMode(){
+    if (!currentQ || answered) return;
+
+    answerRow.style.display = 'none';
+    drawArea.style.display = 'none';
+    selectControls.style.display = 'flex';
+    switchAnswerBtn.textContent = currentQ.dir.to === 'kanji' ? '← Draw answer' : '← Type answer';
+    choiceGrid.innerHTML = '';
+
+    const choices = buildChoices(currentQ.dir, currentQ.entry);
+    choices.forEach(choice => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-btn';
+      btn.textContent = choice;
+      btn.addEventListener('click', () => submitChoice(choice, btn));
+      choiceGrid.appendChild(btn);
+    });
+
+    if (choices.length < 4) {
+      // This should only happen for dictionaries with fewer than four
+      // distinct possible answers for this field.
+      const note = document.createElement('div');
+      note.className = 'count-note';
+      note.textContent = 'Add more entries to get 4 choices.';
+      choiceGrid.insertAdjacentElement('afterend', note);
+    }
+  }
+
+  function hideSelectMode(){
+    if (answered) return;
+    selectControls.style.display = 'none';
+
+    const { dir } = currentQ;
+    if (dir.to === 'kanji') {
+      drawArea.style.display = 'flex';
+      answerRow.style.display = 'none';
+    } else {
+      drawArea.style.display = 'none';
+      answerRow.style.display = 'flex';
+      answerInput.focus();
+    }
+  }
+
+  function submitChoice(choice, clickedButton){
+    if (answered) return;
+
+    answered = true;
+    const { entry, dir } = currentQ;
+    const correctAnswers = alternatives(entry[dir.to]);
+    const correct = correctAnswers.includes(normalize(choice));
+
+    Array.from(choiceGrid.querySelectorAll('.choice-btn')).forEach(btn => {
+      btn.disabled = true;
+      if (correctAnswers.includes(normalize(btn.textContent))) btn.classList.add('correct');
+    });
+
+    if (correct){
+      score++;
+      clickedButton.classList.add('correct');
+      feedback.innerHTML = '<div class="verdict ok">合っています — correct</div>';
+    } else {
+      clickedButton.classList.add('incorrect');
+      missed.push(entry);
+      feedback.innerHTML =
+        '<div class="verdict no">not quite</div>' +
+        '<div class="reveal">' + labelFor(dir.to) + ': <b>' + escapeHtml(entry[dir.to]) + '</b></div>';
+    }
+
+    switchAnswerBtn.style.display = 'none';
+    nextBtn.style.display = '';
+    nextBtn.focus();
+    progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
+    updateStamp();
+  }
+
   function nextQuestion(){
     if (pos >= order.length){
       finishRound();
@@ -991,6 +1151,9 @@
     feedback.innerHTML = '';
     nextBtn.style.display = 'none';
     progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
+    selectControls.style.display = 'none';
+    switchAnswerBtn.style.display = '';
+    choiceGrid.innerHTML = '';
 
     const drawMode = dir.to === 'kanji';
 
@@ -1009,6 +1172,7 @@
       answerInput.classList.remove('correct', 'incorrect');
       answerInput.disabled = false;
       checkBtn.style.display = '';
+      selectBtn.style.display = '';
     answerInput.focus();
     }
   }
@@ -1183,11 +1347,16 @@
 
     gradeYesBtn.disabled = true;
     gradeNoBtn.disabled = true;
+    drawSelectBtn.style.display = '';
     nextBtn.style.display = '';
     nextBtn.focus();
     progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
     updateStamp();
   }
+
+  selectBtn.addEventListener('click', showSelectMode);
+  drawSelectBtn.addEventListener('click', showSelectMode);
+  switchAnswerBtn.addEventListener('click', hideSelectMode);
 
   checkBtn.addEventListener('click', submitAnswer);
   answerInput.addEventListener('keydown', (e) => {
