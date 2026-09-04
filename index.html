@@ -1097,21 +1097,21 @@
   }
 
   function buildChoices(dir, entry){
-    const correct = entry[dir.to];
+    const correctAnswers = alternatives(entry[dir.to]);
     const candidates = [];
 
     deck.forEach(other => {
       if (other === entry) return;
-      const value = (other && other[dir.to] || '').toString().trim();
-      if (value && !candidates.includes(value) && value !== correct) {
-        candidates.push(value);
-      }
+      alternatives(other && other[dir.to]).forEach(value => {
+        if (value && !candidates.includes(value) && !correctAnswers.includes(value)) {
+          candidates.push(value);
+        }
+      });
     });
 
-    // Prefer four distinct choices. If the dictionary has fewer than four
-    // alternatives, show all available choices rather than duplicating answers.
     const distractors = shuffle(candidates).slice(0, 3);
-    return shuffle([correct, ...distractors]);
+    const correctChoice = correctAnswers[Math.floor(Math.random() * correctAnswers.length)];
+    return shuffle([correctChoice, ...distractors]);
   }
 
   function showSelectMode(){
