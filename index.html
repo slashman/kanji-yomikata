@@ -1217,30 +1217,17 @@
     feedback.innerHTML = '';
     nextBtn.style.display = 'none';
     progress.textContent = (pos + 1) + ' / ' + order.length + '   ·   score ' + score;
-    selectControls.style.display = 'none';
-    switchAnswerBtn.style.display = '';
+    answerInput.value = '';
+    answerInput.classList.remove('correct', 'incorrect');
+    answerInput.disabled = false;
+    checkBtn.style.display = '';
     choiceGrid.innerHTML = '';
-
-    const drawMode = dir.to === 'kanji';
-
-    if (drawMode){
-      answerRow.style.display = 'none';
-      drawArea.style.display = 'flex';
-      resetCanvas();
-      drawControls.style.display = '';
-      selfGrade.style.display = 'none';
-      gradeYesBtn.disabled = false;
-      gradeNoBtn.disabled = false;
-    } else {
-      drawArea.style.display = 'none';
-      answerRow.style.display = 'flex';
-      answerInput.value = '';
-      answerInput.classList.remove('correct', 'incorrect');
-      answerInput.disabled = false;
-      checkBtn.style.display = '';
-      selectBtn.style.display = '';
-    answerInput.focus();
-    }
+    switchAnswerBtn.style.display = '';
+    drawControls.style.display = '';
+    selfGrade.style.display = 'none';
+    gradeYesBtn.disabled = false;
+    gradeNoBtn.disabled = false;
+    showSelectMode();
   }
 
   function finishRound(){
