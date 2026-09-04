@@ -478,6 +478,19 @@
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
+
+  .full-card{
+    border:1px solid var(--rule);
+    background:var(--paper-raised);
+    padding:12px 14px;
+    margin-top:10px;
+    text-align:center;
+  }
+
+  .full-card-value-kanji{
+    font-size:48px;
+  }
+  
 </style>
 </head>
 <body>
@@ -1145,6 +1158,14 @@
     }
   }
 
+  function fullCard(entry) {
+    return '<div class="full-card">' +
+           '<div><span class="full-card-value-kanji">' + escapeHtml(entry.kanji) + '</span></div>' +
+           '<div><span>' + escapeHtml(entry.furigana) + '</span></div>' +
+           '<div><span>' + escapeHtml(entry.meaning) + '</span></div>' +
+           '</div>';
+  }
+
   function submitChoice(choice, clickedButton){
     if (answered) return;
 
@@ -1166,9 +1187,9 @@
       clickedButton.classList.add('incorrect');
       missed.push(entry);
       feedback.innerHTML =
-        '<div class="verdict no">not quite</div>' +
-        '<div class="reveal">' + labelFor(dir.to) + ': <b>' + escapeHtml(entry[dir.to]) + '</b></div>';
+        '<div class="verdict no">not quite</div>';
     }
+    feedback.innerHTML +=  fullCard(entry);
 
     switchAnswerBtn.style.display = 'none';
     nextBtn.style.display = '';
